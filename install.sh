@@ -265,14 +265,12 @@ available_ports_file="available_lan_ports.txt"
 selected_ports_file="lan_ports.txt"
 
 # Obter portas LAN da configuração atual
-lan_ports=$(awk -v iface="$network_interface" '/^config device$/ { getline; if (index($0, "option name \047" iface "\047")) { while (getline > 0 && $1 != "config") { if ($1 == "option" && $2 == "ports") { for (i=3; i<=NF; i++) { gsub(/[\047\042]/, "", $i); if ($i != "") print $i } } } } }' /etc/config/network)
+awk -v iface="$network_interface" '/^config device$/ { getline; if (index($0, "option name \047" iface "\047")) { while (getline > 0 && $1 != "config") { if ($1 == "option" && $2 == "ports") { for (i=3; i<=NF; i++) { gsub(/[\047\042]/, "", $i); if ($i != "") print $i } } } } }' /etc/config/network > "$available_ports_file"
 
-if [ -z "$lan_ports" ]; then
+if [ ! -s "$available_ports_file" ]; then
     echo "Error: No LAN ports found in /etc/config/network under 'config device' with 'option name ${network_interface}'."
     exit 1
 fi
-
-echo "$lan_ports" > "$available_ports_file"
 : > "$selected_ports_file"
 
 # Select LAN ports
