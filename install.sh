@@ -52,7 +52,7 @@ if [ $? -ne 0 ]; then
 fi
 
 #Add services
-ppwnpath="$(cd "$(dirname "$0")" && pwd)"
+ppwnpath="/root/PPPwn_WRT-main"
 echo '#!/bin/sh /etc/rc.common
 
 START=99
@@ -264,12 +264,17 @@ echo "Select the LAN port your PS4 will be connected to."
 available_ports_file="available_lan_ports.txt"
 selected_ports_file="lan_ports.txt"
 
+# Obter portas LAN da configuração atual
 lan_ports=$(awk '/^config device$/ {
     getline next_line
     if (next_line ~ /option name .*'${network_interface}'/) {
         while (getline > 0) {
-            if ($1 == "list" && $2 == "ports") {
-                print $3
+            if ($1 == "option" && $2 == "ports") {
+                # Processar linha de portas que pode ter múltiplas portas
+                for (i = 3; i <= NF; i++) {
+                    gsub(/[\'\"]/,"", $i)  # Remove aspas
+                    if ($i != "") print $i
+                }
             }
             if ($1 == "config") break
         }
@@ -343,7 +348,7 @@ fi
 
 selected_ports=$(awk '{gsub(/'\''/, ""); print}' "$selected_ports_file")
 
-# Modify the network file
+# Modify the network file - handle OpenWrt format with 'option ports'
 awk -v selected_ports="$selected_ports" '
     BEGIN {
         split(selected_ports, ports_to_remove, " ")
@@ -351,29 +356,42 @@ awk -v selected_ports="$selected_ports" '
     /^config device$/ {
         print  # Print the `config device` line
         getline
-        if ($1 == "option" && $2 == "name" && $3 == "'\'"${network_interface}"\''") {
+        if ($1 == "option" && $2 == "name" && $3 == "'\''${network_interface}\'''") {
             print  # Print the `option name` line
             while (getline) {
-                if ($1 == "list" && $2 == "ports") {
-                    # Check if the current port is in the ports_to_remove array
-                    to_remove = 0
-                    for (i in ports_to_remove) {
-                        if ($3 == "'"'"'" ports_to_remove[i] "'"'"'") {
-                            to_remove = 1
-                            break
+                if ($1 == "option" && $2 == "ports") {
+                    # Process ports line - remove selected ports
+                    new_ports = ""
+                    for (i = 3; i <= NF; i++) {
+                        port = $i
+                        gsub(/[\'\"]/,"", port)  # Remove quotes
+                        # Check if port should be removed
+                        remove_port = 0
+                        for (j in ports_to_remove) {
+                            if (port == ports_to_remove[j]) {
+                                remove_port = 1
+                                break
+                            }
+                        }
+                        if (!remove_port && port != "") {
+                            if (new_ports == "") {
+                                new_ports = "'\''" port "'\'''"
+                            } else {
+                                new_ports = new_ports " '\''" port "'\'''"
+                            }
                         }
                     }
-                    if (to_remove) {
-                        # Skip this `list ports` line
-                        continue
+                    if (new_ports != "") {
+                        print "\toption ports " new_ports
                     }
+                } else {
+                    print
                 }
-                # Print the rest of the block
+                # Check for end of block
                 if ($1 == "config") {
                     print
                     break
                 }
-                print
             }
         }
         next  # Skip further processing of this block
