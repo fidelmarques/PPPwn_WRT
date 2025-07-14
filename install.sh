@@ -1183,24 +1183,24 @@ echo "The DHCP configuration updated"
 
 
 # Write to config
-echo '
-iface='$network_interface'
-dtlan='$dtlan'
-fw='$firmware_version'
+cat <<EOF > settings.cfg
+iface=$network_interface
+dtlan=$dtlan
+fw=$firmware_version
 shutdown=false
-pppoe='$pppoeb'
-dtl='$dtl'
+pppoe=$pppoeb
+dtl=$dtl
 PPDBG=false
-timeout='$timeout'
-ghd='$ghd'
-led='$led_info'
+timeout=$timeout
+ghd=$ghd
+led=$led_info
 DDNS=false
 oipv=false
-path='$ppwnpath'
-btn='$btn_info'
-ps4ip='$ps4ip'
-startup='$startup'
-' | tee settings.cfg
+path=$ppwnpath
+btn=$btn_info
+ps4ip=$ps4ip
+startup=$startup
+EOF
 
 
 # Permissions
