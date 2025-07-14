@@ -317,23 +317,21 @@ fi
 selected_ports=$(awk '{gsub(/'\''/, ""); print}' "$selected_ports_file")
 
 # Modify the network file - handle OpenWrt format with 'option ports'
-awk -v selected_ports="$selected_ports" '
+awk -v selected_ports="$selected_ports" -v netif="$network_interface" '
     BEGIN {
         split(selected_ports, ports_to_remove, " ")
     }
     /^config device$/ {
-        print  # Print the `config device` line
+        print
         getline
-        if ($1 == "option" && $2 == "name" && $3 == "'\''${network_interface}\'''") {
-            print  # Print the `option name` line
+        if ($1 == "option" && $2 == "name" && $3 == "'" netif "'") {
+            print
             while (getline) {
                 if ($1 == "option" && $2 == "ports") {
-                    # Process ports line - remove selected ports
                     new_ports = ""
                     for (i = 3; i <= NF; i++) {
                         port = $i
-                        gsub(/[\'\"]/,"", port)  # Remove quotes
-                        # Check if port should be removed
+                        gsub(/\x27|\x22/, "", port)
                         remove_port = 0
                         for (j in ports_to_remove) {
                             if (port == ports_to_remove[j]) {
@@ -343,9 +341,9 @@ awk -v selected_ports="$selected_ports" '
                         }
                         if (!remove_port && port != "") {
                             if (new_ports == "") {
-                                new_ports = "'\''" port "'\'''"
+                                new_ports = "'" port "'"
                             } else {
-                                new_ports = new_ports " '\''" port "'\'''"
+                                new_ports = new_ports " '" port "'"
                             }
                         }
                     }
@@ -355,16 +353,15 @@ awk -v selected_ports="$selected_ports" '
                 } else {
                     print
                 }
-                # Check for end of block
                 if ($1 == "config") {
                     print
                     break
                 }
             }
         }
-        next  # Skip further processing of this block
+        next
     }
-    { print }  # Print all other lines
+    { print }
 ' "$original_network_file" > "$modified_network_file"
 
 {
@@ -432,140 +429,139 @@ else
 fi
 
 # Select LAN ports
-while true; do
+# while true; do
+#
+#     if [ ! -s "$available_ports_file" ]; then
+#         echo "No LAN ports left to select."
+#         break
+#     fi
+#
+#     echo "Available LAN ports:"
+#     count=1
+#     while read -r port; do
+#         echo "$count: $port"
+#         count=$((count + 1))
+#     done < "$available_ports_file"
+#
+#     while true; do
+#         read -p "$(printf '\r\n\033[36mSelect a LAN port (Enter the number): \033[0m')" lanp
+#
+#         total_ports=$(wc -l < "$available_ports_file")
+#         if [ "$lanp" -ge 1 ] 2>/dev/null && [ "$lanp" -le "$total_ports" ]; then
+#             selected_port=$(sed -n "${lanp}p" "$available_ports_file")
+#             echo "$selected_port" >> "$selected_ports_file"
+#
+#             sed -i "${lanp}d" "$available_ports_file"
+#
+#             echo -e "\033[32mSelected LAN port: \033[0m$selected_port"
+#             echo
+#             break
+#         else
+#             echo "Invalid selection. Please enter a valid number."
+#         fi
+#     done
+#
+#     read -p "$(printf '\033[36mAdd another LAN port so devices can connect for FTP, BinLoader and other network features? (Y/N): \033[0m')" add_more
+#     case "$add_more" in
+#         [Yy]*) ;;
+#         *) break ;;
+#     esac
+# done
 
-    if [ ! -s "$available_ports_file" ]; then
-        echo "No LAN ports left to select."
-        break
-    fi
-
-    echo "Available LAN ports:"
-    count=1
-    while read -r port; do
-        echo "$count: $port"
-        count=$((count + 1))
-    done < "$available_ports_file"
-
-    while true; do
-        read -p "$(printf '\r\n\033[36mSelect a LAN port (Enter the number): \033[0m')" lanp
-
-        total_ports=$(wc -l < "$available_ports_file")
-        if [ "$lanp" -ge 1 ] 2>/dev/null && [ "$lanp" -le "$total_ports" ]; then
-            selected_port=$(sed -n "${lanp}p" "$available_ports_file")
-            echo "$selected_port" >> "$selected_ports_file"
-
-            sed -i "${lanp}d" "$available_ports_file"
-
-            echo -e "\033[32mSelected LAN port: \033[0m$selected_port"
-            echo
-            break
-        else
-            echo "Invalid selection. Please enter a valid number."
-        fi
-    done
-
-    read -p "$(printf '\033[36mAdd another LAN port so devices can connect for FTP, BinLoader and other network features? (Y/N): \033[0m')" add_more
-    case "$add_more" in
-        [Yy]*) ;;
-        *) break ;;
-    esac
-done
-
-# Timeout
-while true; do
-    echo
-    echo "Timeout:"   
-    echo "
-1) 1 minutes
-2) 2 minutes
-3) 3 minutes
-4) 4 minutes
-5) 5 minutes"
-
-    read -p "$(printf '\r\n\033[36mSet timeout value to restart PPPwn if it hangs (5 is default): \033[0m ')" timer
-    case "$timer" in
-        [1|2|3|4|5|])
-            echo -e "\033[32m$timer minute timeout set\033[0m"
-            timeout=$((timer * 60))
-            break;;
-        *)
-            printf "Please select a valid number from the list"
-            ;;
-        esac
-done
+# while true; do
+#     echo
+#     echo "Timeout:"
+#     echo "1) 1 minutes"
+#     echo "2) 2 minutes"
+#     echo "3) 3 minutes"
+#     echo "4) 4 minutes"
+#     echo "5) 5 minutes"
+#
+#     read -p "$(printf '\r\n\033[36mSet timeout value to restart PPPwn if it hangs (5 is default): \033[0m ')" timer
+#     case "$timer" in
+#         1|2|3|4|5)
+#             echo -e "\033[32m$timer minute timeout set\033[0m"
+#             timeout=$((timer * 60))
+#             break;;
+#         *)
+#             printf "Please select a valid number from the list"
+#             ;;
+#     esac
+# done
 
 # Internet Passthrough
 echo
 
-        opkg install rp-pppoe-server rp-pppoe-common
-        if [ $? -ne 0 ]; then
-            echo "Failed to install rp-pppoe-server"
-            exit 1
-        fi
+opkg install rp-pppoe-server rp-pppoe-common
+if [ $? -ne 0 ]; then
+    echo "Failed to install rp-pppoe-server"
+    exit 1
+fi
 
+while true; do
+    read -p "$(printf '\r\n\r\n\033[36mDo you want to change the default subnet?\r\nif you select no then these defaults will be used\r\n\r\nGateway: \033[33m192.168.3.1\r\n\033[36mPS4 IP: \033[33m192.168.3.11\r\n\033[36mGuest IP: \033[33m192.168.3.12\033[33m\r\n\r\n\033[36m(Y|N)?: \033[0m')" pppoecred
+    case "$pppoecred" in
+    [Yy])
+        #Gateway
         while true; do
-            read -p "$(printf '\r\n\r\n\033[36mDo you want to change the default subnet?\r\nif you select no then these defaults will be used\r\n\r\nGateway: \033[33m192.168.3.1\r\n\033[36mPS4 IP: \033[33m192.168.3.11\r\n\033[36mGuest IP: \033[33m192.168.3.12\033[33m\r\n\r\n\033[36m(Y|N)?: \033[0m')" pppoecred
-            case "$pppoecred" in
-            [Yy])
-                #Gateway
-                while true; do
-                    read -p "$(printf '\r\n\r\n\033[36mEnter new gateway (192.168.x.x): \033[0m')" gateway
-                    if echo "$gateway" | grep -Eq '^192\.168\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+            read -p "$(printf '\r\n\r\n\033[36mEnter new gateway (192.168.x.x): \033[0m')" gateway
+            if echo "$gateway" | grep -Eq '^192\.168\.[0-9]{1,3}\.[0-9]{1,3}$'; then
 
-                        third_octet=$(echo "$gateway" | cut -d. -f3)
-                        fourth_octet=$(echo "$gateway" | cut -d. -f4)
-                    
-                        if [ "$third_octet" -ge 1 ] 2>/dev/null && [ "$third_octet" -le 254 ] 2>/dev/null && \
-                        [ "$fourth_octet" -ge 1 ] 2>/dev/null && [ "$fourth_octet" -le 254 ] 2>/dev/null; then
+                third_octet=$(echo "$gateway" | cut -d. -f3)
+                fourth_octet=$(echo "$gateway" | cut -d. -f4)
+            
+                if [ "$third_octet" -ge 1 ] 2>/dev/null && [ "$third_octet" -le 254 ] 2>/dev/null && \
+                [ "$fourth_octet" -ge 1 ] 2>/dev/null && [ "$fourth_octet" -le 254 ] 2>/dev/null; then
 
-                            remoteip=$(echo "$gateway" | awk -F'.' '{ $4 = $4 + 1; print $1"."$2"."$3"."$4 }')
-                            # Prompt for static IP
-                            while true; do
-                                read -p "$(printf '\r\n\r\n\033[36mEnter the last digit for the PS4 IP (1-254): \033[0m')" static_octet
+                    remoteip=$(echo "$gateway" | awk -F'.' '{ $4 = $4 + 1; print $1"."$2"."$3"."$4 }')
+                    # Prompt for static IP
+                    while true; do
+                        read -p "$(printf '\r\n\r\n\033[36mEnter the last digit for the PS4 IP (1-254): \033[0m')" static_octet
 
-                                if [ "$static_octet" -ge 1 ] 2>/dev/null && [ "$static_octet" -le 254 ] 2>/dev/null; then
-                                    static_ip="192.168.${third_octet}.${static_octet}"
-                                    echo "PS4 IP set to: $static_ip"
-                                    ps4ip="$static_ip"
-                                    break
-                                else
-                                    echo "Invalid number. Please enter a number between 1 and 254."
-                                fi
-                            done
-                            # Prompt for guest IP
-                            while true; do
-                                read -p "$(printf '\r\n\r\n\033[36mEnter the last digit for the guest IP (1-254): \033[0m')" static_octet
-
-                                if [ "$static_octet" -ge 1 ] 2>/dev/null && [ "$static_octet" -le 254 ] 2>/dev/null; then
-                                    static_ip="192.168.${third_octet}.${static_octet}"
-                                    echo "PS4 IP set to: $static_ip"
-                                    guestip="$static_ip"
-                                    break
-                                else
-                                    echo "Invalid number. Please enter a number between 1 and 254."
-                                fi
-                            done
+                        if [ "$static_octet" -ge 1 ] 2>/dev/null && [ "$static_octet" -le 254 ] 2>/dev/null; then
+                            static_ip="192.168.${third_octet}.${static_octet}"
+                            echo "PS4 IP set to: $static_ip"
+                            ps4ip="$static_ip"
                             break
                         else
-                            echo "Invalid format. Please enter an address in the format 192.168.x.x where x is 1-254."
-                    fi
-                    else
-                        echo "Invalid format. Please enter an address in the format 192.168.x.x where x is 1-254."
-                    fi
-                done
-            break;;
-            [Nn])                
-                gateway="192.168.3.1"
-                remoteip="192.168.3.2"
-                ps4ip="192.168.3.11"
-                guestip="192.168.3.12"
-                break;;
-            *)
-            break;;
-            esac
+                            echo "Invalid number. Please enter a number between 1 and 254."
+                        fi
+                    done
+                    # Prompt for guest IP
+                    while true; do
+                        read -p "$(printf '\r\n\r\n\033[36mEnter the last digit for the guest IP (1-254): \033[0m')" static_octet
+
+                        if [ "$static_octet" -ge 1 ] 2>/dev/null && [ "$static_octet" -le 254 ] 2>/dev/null; then
+                            static_ip="192.168.${third_octet}.${static_octet}"
+                            echo "PS4 IP set to: $static_ip"
+                            guestip="$static_ip"
+                            break
+                        else
+                            echo "Invalid number. Please enter a number between 1 and 254."
+                        fi
+                    done
+                    break
+                else
+                    echo "Invalid format. Please enter an address in the format 192.168.x.x where x is 1-254."
+                fi
+            else
+                echo "Invalid format. Please enter an address in the format 192.168.x.x where x is 1-254."
+            fi
         done
-        dns_server=$(ifconfig $network_interface | grep 'inet addr' | awk -F: '{print $2}' | awk '{print $1}')
-        echo '# PPP options for the PPPoE server
+    break;;
+    [Nn])                
+        gateway="192.168.3.1"
+        remoteip="192.168.3.2"
+        ps4ip="192.168.3.11"
+        guestip="192.168.3.12"
+        break;;
+    *)
+    break;;
+    esac
+done
+
+dns_server=$(ifconfig $network_interface | grep 'inet addr' | awk -F: '{print $2}' | awk '{print $1}')
+echo '# PPP options for the PPPoE server
 # LIC: GPL
 require-chap
 login
