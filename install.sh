@@ -272,7 +272,7 @@ lan_ports=$(awk '/^config device$/ {
             if ($1 == "option" && $2 == "ports") {
                 # Processar linha de portas que pode ter múltiplas portas
                 for (i = 3; i <= NF; i++) {
-                    gsub(/[\'\"]/,"", $i)  # Remove aspas
+                    gsub(/[\047\042]/,"", $i)  # Remove aspas
                     if ($i != "") print $i
                 }
             }
