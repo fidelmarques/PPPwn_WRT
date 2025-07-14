@@ -268,7 +268,7 @@ selected_ports_file="lan_ports.txt"
 lan_ports=$(awk -v iface="$network_interface" '
     /^config device$/ {
         getline next_line
-if (index(next_line, "option name " iface)) {
+if (index(next_line, "option name '" iface "'")) {
             while (getline > 0) {
                 if ($1 == "option" && $2 == "ports") {
                     # Process line of ports that may have multiple entries
