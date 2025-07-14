@@ -12,24 +12,8 @@ else
     echo -e "\r\n\r\nAvailable storage is sufficient: \033[32m${AVAILABLE_MB}MB \033[0mavailable."
 fi
 
-# Wait for DNS resolution
-DNS_CHECK_HOST="one.one.one.one"
-MAX_WAIT=60
-WAIT_INTERVAL=2
-ELAPSED=0
-
-echo "Waiting for network/DNS to be available..."
-
-while ! ping -c 1 -W 1 "$DNS_CHECK_HOST" >/dev/null 2>&1; do
-    sleep "$WAIT_INTERVAL"
-    ELAPSED=$((ELAPSED + WAIT_INTERVAL))
-    if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
-        echo "Network not available after $MAX_WAIT seconds. Exiting..."
-        exit 1
-    fi
-done
-
-echo "Network is available. Continuing installation..."
+# Network check skipped - continuing installation...
+echo "Network check skipped - continuing installation..."
 
 
 opkg update || { echo "opkg update failed"; exit 1; }
